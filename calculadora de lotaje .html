@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Calculadora Pro · Margen & Lotaje</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --card: #161b22;
+            --border: #30363d;
+            --muted: #8b949e;
+            --text: #c9d1d9;
+            --accent: #58a6ff;
+            --success: #3fb950;
+            --danger: #f85149;
+            --row-hover: #1f242c;
+        }
+
+        * { box-sizing: border-box; transition: all 0.2s ease; }
+
+        body {
+            margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            color: var(--text); background-color: var(--bg);
+            line-height: 1.5; padding: 20px;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 4px; color: #fff; }
+        p.subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+
+        .grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
+        @media (min-width: 1024px) { .grid { grid-template-columns: 350px 1fr; } }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px;
+            height: fit-content;
+        }
+
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+        
+        select, input {
+            width: 100%; padding: 10px 12px;
+            background: #0d1117; color: #fff;
+            border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; outline: none;
+        }
+        select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.2); }
+
+        .stats-box {
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+            border-radius: 8px; padding: 15px; margin-top: 20px;
+        }
+
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; color: var(--muted); font-weight: 500; padding: 12px; border-bottom: 2px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid var(--border); }
+        
+        tr.clickable { cursor: pointer; }
+        tr.clickable:hover { background: var(--row-hover); }
+        tr.active { background: rgba(88, 166, 255, 0.15) !important; }
+
+        .badge {
+            padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;
+            text-transform: uppercase;
+        }
+        .badge-crash { background: rgba(248, 81, 73, 0.1); color: var(--danger); border: 1px solid var(--danger); }
+        .badge-boom { background: rgba(63, 185, 80, 0.1); color: var(--success); border: 1px solid var(--success); }
+
+        .btn-group { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+        button {
+            padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border);
+            background: #21262d; color: #c9d1d9; cursor: pointer; font-size: 13px; font-weight: 600;
+        }
+        button:hover { background: #30363d; border-color: #8b949e; }
+        button.primary { background: #238636; color: white; border-color: rgba(240,246,252,0.1); }
+        button.primary:hover { background: #2ea043; }
+
+        .search-bar { margin-bottom: 15px; position: relative; }
+        .search-bar input { padding-left: 35px; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%238b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'); background-repeat: no-repeat; background-position: 10px center; }
+
+        .text-accent { color: var(--accent); font-weight: bold; }
+        .text-success { color: var(--success); }
+        .text-danger { color: var(--danger); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Calculadora de Margen ↔ Lotaje</h1>
+    <p class="subtitle">Selecciona un activo de referencia o haz clic en cualquier fila de la tabla para convertir.</p>
+
+    <div class="grid">
+        <aside class="card">
+            <div class="input-group">
+                <label>Activo de Referencia</label>
+                <select id="assetA"></select>
+            </div>
+            <div class="input-group">
+                <label>Lotaje</label>
+                <input type="number" id="lotA" step="0.01" value="1.00">
+            </div>
+            <div class="input-group">
+                <label>Margen ($)</label>
+                <input type="number" id="margenA" step="0.01">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="input-group">
+                    <label>Stop Loss %</label>
+                    <input type="number" id="slpct" value="10">
+                </div>
+                <div class="input-group">
+                    <label>Take Profit %</label>
+                    <input type="number" id="tppct" value="20">
+                </div>
+            </div>
+
+            <div class="stats-box">
+                <div style="display:flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color:var(--muted)">Margen Total:</span>
+                    <span id="margenShare" class="text-accent">$ 0.00</span>
+                </div>
+                <div style="display:flex; justify-content: space-between; font-size: 0.85rem;">
+                    <span>Riesgo (SL):</span>
+                    <span id="slA" class="text-danger">$ 0.00</span>
+                </div>
+                <div style="display:flex; justify-content: space-between; font-size: 0.85rem;">
+                    <span>Objetivo (TP):</span>
+                    <span id="tpA" class="text-success">$ 0.00</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="card">
+            <div class="search-bar">
+                <input type="text" id="search" placeholder="Buscar activo (ej: C1000, Boom...)">
+            </div>
+            
+            <div class="btn-group">
+                <button id="setLot1">Resetear Lotaje a 1.0</button>
+                <button id="copyCsv">Copiar Tabla (CSV)</button>
+            </div>
+
+            <div class="table-container">
+                <table id="convTable">
+                    <thead>
+                        <tr>
+                            <th>Activo</th>
+                            <th>Tipo</th>
+                            <th>Base</th>
+                            <th>Lotaje Eq.</th>
+                            <th>SL ($)</th>
+                            <th>TP ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+const ASSETS = [
+    {id:"C1000", label:"Crash 1000", kind:"Crash", base:8.19},
+    {id:"C300",  label:"Crash 300",  kind:"Crash", base:13.39},
+    {id:"C500",  label:"Crash 500",  kind:"Crash", base:7.87},
+    {id:"C600",  label:"Crash 600",  kind:"Crash", base:49.12},
+    {id:"C900",  label:"Crash 900",  kind:"Crash", base:49.47},
+    {id:"C150",  label:"Crash 150",  kind:"Crash", base:5.01},
+    {id:"B1000", label:"Boom 1000",  kind:"Boom",  base:29.47},
+    {id:"B500",  label:"Boom 500",   kind:"Boom",  base:14.19},
+    {id:"B300",  label:"Boom 300",   kind:"Boom",  base:46.80},
+    {id:"B600",  label:"Boom 600",   kind:"Boom",  base:15.70},
+    {id:"B900",  label:"Boom 900",   kind:"Boom",  base:23.24},
+    {id:"B150",  label:"Boom 150",   kind:"Boom",  base:4.91},
+].sort((a,b) => a.label.localeCompare(b.label));
+
+const $ = sel => document.querySelector(sel);
+const fmt = n => Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+// Elementos
+const elA = $('#assetA'), elLot = $('#lotA'), elMar = $('#margenA');
+const elSLP = $('#slpct'), elTPP = $('#tppct'), elSearch = $('#search');
+
+function init() {
+    ASSETS.forEach(a => {
+        const opt = new Option(a.label, a.id);
+        elA.add(opt);
+    });
+    updateFromLot();
+}
+
+function updateFromLot() {
+    const asset = ASSETS.find(a => a.id === elA.value);
+    const m = asset.base * (Number(elLot.value) || 0);
+    elMar.value = m.toFixed(2);
+    render();
+}
+
+function updateFromMargen() {
+    const asset = ASSETS.find(a => a.id === elA.value);
+    const l = (Number(elMar.value) || 0) / asset.base;
+    elLot.value = l.toFixed(2);
+    render();
+}
+
+function render() {
+    const margin = Number(elMar.value) || 0;
+    const slFactor = (Number(elSLP.value) || 0) / 100;
+    const tpFactor = (Number(elTPP.value) || 0) / 100;
+    const query = elSearch.value.toLowerCase();
+
+    // Actualizar Panel Lateral
+    $('#margenShare').textContent = `$ ${fmt(margin)}`;
+    $('#slA').textContent = `$ ${fmt(margin * slFactor)}`;
+    $('#tpA').textContent = `$ ${fmt(margin * tpFactor)}`;
+
+    const tbody = $('#convTable tbody');
+    tbody.innerHTML = '';
+
+    ASSETS.filter(a => a.label.toLowerCase().includes(query)).forEach(a => {
+        const lotEq = margin / a.base;
+        const tr = document.createElement('tr');
+        tr.className = `clickable ${a.id === elA.value ? 'active' : ''}`;
+        
+        tr.innerHTML = `
+            <td><strong>${a.label}</strong></td>
+            <td><span class="badge badge-${a.kind.toLowerCase()}">${a.kind}</span></td>
+            <td style="color:var(--muted)">${a.base}</td>
+            <td class="text-accent">${fmt(lotEq)}</td>
+            <td class="text-danger">${fmt(margin * slFactor)}</td>
+            <td class="text-success">${fmt(margin * tpFactor)}</td>
+        `;
+
+        tr.onclick = () => {
+            elA.value = a.id;
+            // Al hacer clic, mantenemos el margen y recalculamos lotaje para el nuevo activo
+            const newLot = margin / a.base;
+            elLot.value = newLot.toFixed(2);
+            render();
+        };
+        
+        tbody.appendChild(tr);
+    });
+}
+
+// Eventos
+elA.onchange = updateFromLot;
+elLot.oninput = updateFromLot;
+elMar.oninput = updateFromMargen;
+elSLP.oninput = render;
+elTPP.oninput = render;
+elSearch.oninput = render;
+
+$('#setLot1').onclick = () => {
+    elLot.value = "1.00";
+    updateFromLot();
+};
+
+$('#copyCsv').onclick = () => {
+    let csv = "Activo,Tipo,Lotaje,Margen,SL,TP\n";
+    const m = Number(elMar.value) || 0;
+    ASSETS.forEach(a => {
+        const l = m / a.base;
+        csv += `${a.label},${a.kind},${l.toFixed(2)},${m.toFixed(2)},${(m*Number(elSLP.value)/100).toFixed(2)},${(m*Number(elTPP.value)/100).toFixed(2)}\n`;
+    });
+    navigator.clipboard.writeText(csv);
+    alert("CSV copiado al portapapeles");
+};
+
+init();
+</script>
+</body>
+</html>
